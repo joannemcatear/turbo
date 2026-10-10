@@ -1,3 +1,143 @@
- <!doctype html>
-   <meta http-equiv="refresh" content="0; url=turbo/">
-   <a href="turbo/">Open Turbo</a>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1013">
+  <title>Turbo</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="3"/><path d="M16 6v10l7 4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      <span>Turbo</span>
+    </div>
+    <div class="devices">
+      <button id="btn-trainer" class="chip" data-state="off">
+        <span class="dot"></span><span class="label">Connect trainer</span>
+      </button>
+      <button id="btn-click" class="chip" data-state="off">
+        <span class="dot"></span><span class="label">Add clicker</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="unsupported" class="banner" hidden>
+    This browser can't use Bluetooth. Use <b>Chrome</b> or <b>Edge</b> on a computer or Android phone.
+    On iPhone/iPad, use the free <b>Bluefy</b> browser app.
+  </div>
+
+  <main>
+    <section class="target card">
+      <div class="mode" role="tablist">
+        <button role="tab" data-mode="erg" aria-selected="true">ERG <small>hold watts</small></button>
+        <button role="tab" data-mode="slope" aria-selected="false">Slope <small>simulate a hill</small></button>
+      </div>
+
+      <div class="target-row">
+        <button class="adj" data-action="down" aria-label="Decrease">−</button>
+        <div class="target-value">
+          <span id="target-num">150</span><span id="target-unit">W</span>
+          <div id="target-caption" class="caption">target power</div>
+        </div>
+        <button class="adj" data-action="up" aria-label="Increase">+</button>
+      </div>
+      <div id="press-flash" class="press-flash" aria-live="polite"></div>
+    </section>
+
+    <section class="card workout" id="workout" hidden>
+      <div class="wo-head">
+        <div>
+          <div class="eyebrow" id="wo-week"></div>
+          <h2 id="wo-name"></h2>
+        </div>
+        <div class="wo-intensity">
+          <button class="mini" data-int="-5" aria-label="Make the workout easier">−</button>
+          <div><output id="wo-int">100%</output><small>intensity</small></div>
+          <button class="mini" data-int="5" aria-label="Make the workout harder">+</button>
+        </div>
+      </div>
+      <div class="wo-now">
+        <div>
+          <div id="wo-step" class="wo-step"></div>
+          <div id="wo-next" class="muted"></div>
+        </div>
+        <output id="wo-left" class="wo-left">0:00</output>
+      </div>
+      <div id="wo-profile" aria-label="Workout profile"></div>
+      <div class="wo-progress muted"><span id="wo-elapsed">0:00</span><span id="wo-hint"></span><span id="wo-total">0:00</span></div>
+      <div class="wo-buttons">
+        <button id="wo-done" class="primary" hidden>I'm done</button>
+        <button id="wo-pause">Pause</button>
+        <button id="wo-skip">Skip interval</button>
+        <button id="wo-end">End workout</button>
+      </div>
+    </section>
+
+    <section class="card plan" id="plan">
+      <div class="plan-head">
+        <div>
+          <h2>8-week plan</h2>
+          <p class="muted" id="plan-progress"></p>
+        </div>
+        <label class="ftp">FTP <input id="ftp" type="number" min="40" max="500" step="1"> W</label>
+      </div>
+      <div id="resume" class="resume" hidden></div>
+      <div id="result" class="result" hidden></div>
+      <div class="weeks" id="weeks" role="tablist"></div>
+      <div id="sessions"></div>
+      <p class="muted small">FTP is roughly the power you could hold for an hour. Every workout is set as a percentage of it, so the plan adjusts when you update it.</p>
+    </section>
+
+    <section class="metrics">
+      <div class="metric big"><label>Power <small>3s</small></label><output id="m-power">–</output><span class="u">W</span></div>
+      <div class="metric"><label>Cadence</label><output id="m-cadence">–</output><span class="u">rpm</span></div>
+      <div class="metric"><label>Speed</label><output id="m-speed">–</output><span class="u">km/h</span></div>
+      <div class="metric"><label>Time</label><output id="m-time">0:00</output></div>
+      <div class="metric"><label>Avg power</label><output id="m-avg">–</output><span class="u">W</span></div>
+      <div class="metric" id="hr-box" hidden><label>Heart rate</label><output id="m-hr">–</output><span class="u">bpm</span></div>
+    </section>
+
+    <section class="card chart-card">
+      <canvas id="chart" height="140" aria-label="Power over the last five minutes"></canvas>
+      <div class="legend"><span class="sw power"></span>power <span class="sw target"></span>target <span class="muted">· last 5 min</span></div>
+    </section>
+
+    <details class="card" id="clicker-panel">
+      <summary>Clicker buttons</summary>
+      <p class="muted">Choose what each Click v2 button does. Holding <b>up</b>/<b>down</b> buttons repeats.</p>
+      <div id="mapping" class="mapping"></div>
+      <div class="steps">
+        <label>ERG step <input id="step-erg" type="number" min="1" max="100" value="10"> W</label>
+        <label>ERG big step <input id="step-erg-big" type="number" min="1" max="200" value="25"> W</label>
+        <label>Slope step <input id="step-slope" type="number" min="0.1" max="5" step="0.1" value="0.5"> %</label>
+        <label>Slope big step <input id="step-slope-big" type="number" min="0.1" max="10" step="0.1" value="2"> %</label>
+      </div>
+      <p class="muted">Keyboard works too: ↑/↓ adjust, Shift+↑/↓ big step, M switches mode.</p>
+    </details>
+
+    <details class="card">
+      <summary>Help &amp; tips</summary>
+      <ul class="tips">
+        <li><b>Spacing your rides.</b> Do the three sessions in order with a day between them, e.g. Tuesday, Thursday, Saturday. Keep the hard rides (the 1st and 3rd of each week) away from the day after a hard run; easy runs fit anywhere.</li>
+        <li><b>Too hard or too easy?</b> During a workout, the clicker's increase/decrease buttons change the intensity by 5% (big steps by 10%). If you're regularly changing it, update your FTP.</li>
+        <li><b>ERG feels like a wall?</b> ERG holds the power whatever your cadence, so if you slow down it gets harder. Keep your cadence up (85–95 rpm) and use an easy gear.</li>
+        <li><b>Close Zwift first.</b> The Hub One only accepts one Bluetooth connection, so Zwift / Zwift Companion must be fully closed.</li>
+        <li><b>Click v2 is two devices.</b> Press <i>Add clicker</i> once for each half (left and right). Press a button on the puck to wake it before connecting.</li>
+        <li><b>Click v2 dropping out every minute?</b> Zwift locks the Click v2 to its own app. Open Zwift, pair the trainer and Click v2 for ~30 seconds, close Zwift completely, then connect here. This "unlock" lasts about a day. Until then, this app reconnects automatically. The right half usually works without unlocking, so <b>+</b> and <b>B</b> are set up to cover both directions.</li>
+        <li><b>Buttons not reacting?</b> The Click v2 may hide its buttons until its firmware is up to date — update it in the Zwift Companion app.</li>
+      </ul>
+    </details>
+
+    <details class="card">
+      <summary>Connection log</summary>
+      <pre id="log"></pre>
+    </details>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
